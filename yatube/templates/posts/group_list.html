@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}
+  Записи сообщества: {{ group.title }}</title>
+{% endblock %}
+{% block contend %}
+<!-- класс py-5 создает отступы сверху и снизу блока -->
+<div class="container py-5">
+    <h1>{{group.title}}</h1>
+    <p>
+      {{group.description}}
+    </p>
+    <article>
+      {% for i in page_obj %}
+      <ul>
+        <li>
+          Автор: {{i.author.get_full_name}}
+        </li>
+        <li>
+          Дата публикации: {{i.pub_date|date:'d E Y'}}
+        </li>
+      </ul>      
+      <p>
+        {{i.text}}
+      </p>         
+    </article>
+    {% if not foorloop.last %}<hr>{% endif %}
+    {% endfor %}
+    <!-- под последним постом нет линии -->
+    {% include 'includes/paginator.html' %}
+  </div>  
+{%endblock%}

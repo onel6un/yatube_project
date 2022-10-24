@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}
+  Профайл пользователя: {{ user_author.get_full_name }}
+{% endblock %}
+{% block contend %}
+  <div class="container py-5">
+    <h1>Все посты пользователя {{ user_author.get_full_name }} </h1>
+    <h3>Всего постов: {{ posts.count }} </h3>
+    {% for post in posts %}
+    <article>
+      <ul>
+        <li>
+          Автор: {{ user_author.get_full_name }} <!--Лев Толстой-->
+          <a href="{% url 'posts:profile' user_author.username %}">все посты пользователя</a>
+        </li>
+        <li>
+          Дата публикации: {{ post.pub_date|date:'d E Y'}} <!-- 31 июля 1854 -->
+        </li>
+      </ul>
+      <p>
+        {{ post.text }}
+      </p>
+      <a href="{% url 'posts:post_detail' post.pk %}">подробная информация </a>
+    </article>
+    {% if post.group %}
+    <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
+    {%endif%}
+    {% if not foorloop.last %}<hr>{% endif %}
+    {% endfor %}
+    <!-- под последним постом нет линии -->
+    {% include 'includes/paginator.html' %}<!-- Остальные посты. после последнего нет черты -->
+    <!-- Здесь подключён паджинатор -->
+  </div>
+{% endblock %}

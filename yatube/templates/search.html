@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- Based on https://getbootstrap.com/docs/4.4/examples/pricing/ -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" /> 
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Поиск</title>
+
+    <!-- Bootstrap core CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+  </head>
+
+  <body>
+  <div class="container">
+    <h1>Поиск по записям</h1>
+
+    <div class="card">
+      <div class="card-body">
+
+        <form class="form-inline" action="{% url 'posts:search' %}">
+          <div class="form-row">
+          <input name="q" class="form-control form-control-lg" type="search" 
+            placeholder="Поиск" {% if keyword %}value="{{ keyword }}"{% endif %}>
+          <button class="btn" type="submit">Найти</button>
+          </div>
+        </form>
+        </div>
+      </div>
+
+    <div class="container">
+    {% for post in posts %}
+    <strong>
+        Автор: {{ post.author.get_full_name }}, 
+        Дата публикации: {{ post.pub_date|date:"d M Y" }}, 
+        Группа: {{ post.group.title }}
+    </strong>
+    <p>{{ post.text|linebreaksbr }}</p>
+    <hr>
+    {% endfor %}
+    </div>
+
+  </div>
+  </body>
+</html>
