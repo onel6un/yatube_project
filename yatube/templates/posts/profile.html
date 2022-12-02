@@ -2,11 +2,29 @@
 {% block title %}
   Профайл пользователя: {{ user_author.get_full_name }}
 {% endblock %}
+{% load thumbnail %}
 {% block contend %}
   <div class="container py-5">
     <h1>Все посты пользователя {{ user_author.get_full_name }} </h1>
-    <h3>Всего постов: {{ posts.count }} </h3>
-    {% for post in posts %}
+    <h3>Всего постов: {{ post_count }} </h3>
+    <div class="mb-5">
+      {% if following %}
+        <a
+          class="btn btn-lg btn-light"
+          href="{% url 'posts:profile_unfollow' user_author.username %}" role="button"
+        >
+          Отписаться
+        </a>
+      {% else %}
+          <a
+            class="btn btn-lg btn-primary"
+            href="{% url 'posts:profile_follow' user_author.username %}" role="button"
+          >
+            Подписаться
+          </a>
+       {% endif %}
+    </div>
+    {% for post in page_obj %}
     <article>
       <ul>
         <li>
@@ -16,11 +34,23 @@
         <li>
           Дата публикации: {{ post.pub_date|date:'d E Y'}} <!-- 31 июля 1854 -->
         </li>
+        {% if post.group %}
+        <li>
+          {{ post.group }}
+        </li>
+        {% endif %}
       </ul>
+      {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+        <img class="card-img my-2" src="{{ im.url }}">
+      {% endthumbnail %}
       <p>
         {{ post.text }}
       </p>
       <a href="{% url 'posts:post_detail' post.pk %}">подробная информация </a>
+      {% if post.author == req_user %}
+      <a href="{% url 'posts:edit' post.pk %}">\редактировать\</a>
+      <a href="{% url 'posts:delite' post.pk %}">\удалить\</a>
+      {% endif %}
     </article>
     {% if post.group %}
     <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
@@ -28,7 +58,7 @@
     {% if not foorloop.last %}<hr>{% endif %}
     {% endfor %}
     <!-- под последним постом нет линии -->
-    {% include 'includes/paginator.html' %}<!-- Остальные посты. после последнего нет черты -->
+    {% include 'includes/paginator.html' %}
     <!-- Здесь подключён паджинатор -->
   </div>
 {% endblock %}

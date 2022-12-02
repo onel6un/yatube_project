@@ -3,6 +3,7 @@ from django.urls import path
 from django.contrib.auth.views import *
 from . import views
 
+
 app_name = 'users'
 
 urlpatterns = [
@@ -16,3 +17,4 @@ urlpatterns = [
     path('reset/<uidb64>/<token>/', PasswordResetConfirmView.as_view(template_name='users/password_reset_confirm.html')),
     path('reset/done/', PasswordResetCompleteView.as_view(template_name='users/password_reset_complete.html')),
 ]
+

@@ -1,16 +1,18 @@
 {% extends 'base.html' %}
 {% load user_filters %}
 {% block title %}
-  {{'Главная страница проекта'|uglify}}
+  {{'Подписки'}}
 {% endblock %}
-{% load cache %}
 {% load thumbnail %}
 {% block contend %}
+  <!-- класс py-5 создает отступы сверху и снизу блока -->
   <div class="container py-5">
     {% include 'includes/switcher.html' %}     
-    <h1>Последние обновления на сайте</h1>
+    <h1>Ваши подписки:</h1>
     <article>
-      {% cache 20 main %}
+      {%if not page_obj %}
+        <h2>Увы, вы пока не на кого не подписались...</h2>
+      {% endif %}
       {% for post in page_obj %}
       <ul>
         <li>
@@ -34,15 +36,9 @@
       <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
       {% endif %}
       <a href="{% url 'posts:post_detail' post.pk %}">подробная информация </a>
-      {% if post.author == req_user %}
-      <a href="{% url 'posts:edit' post.pk %}">\редактировать\</a>
-      <a href="{% url 'posts:delite' post.pk %}">\удалить\</a>
-      {% endif %}
     </article>
     {% if not foorloop.last %}<hr>{% endif %}
     {% endfor %}
-    <!-- под последним постом нет линии -->
     {% include 'includes/paginator.html' %}
   </div>
-{% endcache %}
 {% endblock %}

@@ -25,7 +25,10 @@ SECRET_KEY = '&tji2al^%qxsq+0yu-jze0+5-u-xnp18u36zr1#q#mr5d%1mzh'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'testserver',
+    '127.0.0.1'
+]
 
 
 # Application definition
@@ -41,6 +44,8 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'core.apps.CoreConfig',
     'about.apps.AboutConfig',
+    'sorl.thumbnail', 
+    'debug_toolbar', 
 ]
 
 MIDDLEWARE = [
@@ -51,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'yatube.urls'
@@ -124,8 +130,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Директории хранения медиафайлов
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
 
 LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'posts:home_page'
@@ -135,3 +144,18 @@ LOGOUT_REDIRECT_URL = 'posts:home_page'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 # указываем директорию, в которую будут складываться файлы писем
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+# переопределяем функцию представления страницы 403 ошибки
+CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+
+#Добавим куширование в режиме откладки
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': os.path.join(BASE_DIR, 'yatube_cache'),
+    }
+} 
+
+# Добавьте IP адреса, при обращении с которых будет доступен DjDT
+INTERNAL_IPS = [
+    '127.0.0.1',
+] 

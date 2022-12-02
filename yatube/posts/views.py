@@ -1,23 +1,27 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from .models import *
 from .forms import *
 from django.contrib.auth.decorators import login_required
-import datetime 
+
 
 # Create your views here.
 
+
 def index(request):
     template = 'posts/index.html'
-    title = 'Это главная страница проекта Yatube'
-    posts_list = Post.objects.order_by('-pub_date').select_related('group').select_related('author')
+    posts_list = (
+        Post.objects.order_by('-pub_date')
+        .select_related('group')
+        .select_related('author')
+    )
     paginator = Paginator(posts_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     context = {
-        'title' : title,
-        'page_obj' : page_obj,
+        'req_user': request.user,
+        'page_obj': page_obj,
     }
     return HttpResponse(render(request, template, context))
 
@@ -25,7 +29,11 @@ def index(request):
 def search(request):
     keyword = request.GET.get("q", None)
     if keyword:
-        posts = Post.objects.filter(text__contains=keyword).select_related('author').select_related('group')
+        posts = (
+            Post.objects.filter(text__contains=keyword)
+            .select_related('author')
+            .select_related('group')
+        )
     else:
         posts = None
     return render(request, "search.html", {"posts": posts, "keyword": keyword})
@@ -33,85 +41,167 @@ def search(request):
 
 def group_post(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts_list = (Post.objects.filter(group=group)
-                  .order_by('-pub_date')
-                  .select_related('group')
-                  .select_related('author')
-                  )
+    posts_list = (
+        Post.objects.filter(group=group)
+        .order_by('-pub_date')
+        .select_related('group')
+        .select_related('author')
+    )
     paginator = Paginator(posts_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     template = 'posts/group_list.html'
     context = {
-        'group' : group,
-        'page_obj' : page_obj,
+        'req_user': request.user,
+        'group': group,
+        'page_obj': page_obj,
     }
     return HttpResponse(render(request, template, context))
 
 
 def profile(request, username):
-    user_author = User.objects.get(username=username)
-    posts = (Post.objects.select_related('group')
-             .select_related('author')
-             .filter(author_id=user_author.pk)
-             .order_by('-pub_date')
-             )
+    user_author = get_object_or_404(User, username=username)
+    # posts = user_author.author.all() либо попробывать так
+    posts = (
+        Post.objects.select_related('group')
+        .select_related('author')
+        .filter(author_id=user_author.pk)
+        .order_by('-pub_date')
+    )
+    #  проверим есть ли подписка пользователя на автора страницы
+    following = Follow.objects.filter(user=request.user, author=user_author).exists()
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    post_count = posts.count()
     context = {
-        'user_author':user_author,
-        'posts':posts,
-        'page_obj':page_obj,
+        'req_user': request.user,
+        'user_author': user_author,
+        'post_count': post_count,
+        'page_obj': page_obj,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
-    post = (Post.objects
-            .prefetch_related('author')
-            .prefetch_related('group')
+    if Post.objects.filter(pk=post_id).exists():
+        post = (
+            Post.objects
+            .select_related('author')
+            .select_related('group')
             .get(pk=post_id)
-            )
-    count_posts = Post.objects.filter(author_id=post.author.pk).count()
-    context = {
-        'post':post,
-        'count':count_posts
-    }
-    return render(request, 'posts/post_detail.html', context)
+        )
+        count_posts = Post.objects.filter(author_id=post.author.pk).count()
+        comments = Comment.objects.filter(post=post_id)
+        form = CommentForm()
+        context = {
+            'req_user': request.user,
+            'post': post,
+            'count': count_posts,
+            'form': form,
+            'comments': comments,
+        }
+        return render(request, 'posts/post_detail.html', context)
+    raise Http404()
 
 
 @login_required
 def post_create(request):
     if request.method == 'POST':
-        form = PostForm(request.POST)
+        form = PostForm(request.POST, files=request.FILES or None)
         if form.is_valid():
             complite = form.save(commit=False)
             complite.author = request.user
-            print('кааак тааак')
             complite.save()
-            return redirect('/profile/'+str(request.user))
-        return render(request, 'posts/create_post.html', {'form':form})
+            return redirect('posts:profile', username=request.user)
+        return render(request, 'posts/create_post.html', {'form': form})
     form = PostForm()
-    return render(request, 'posts/create_post.html', {'form':form})
+    return render(request, 'posts/create_post.html', {'form': form})
 
 
 def post_edit(request, post_id):
-    post = Post.objects.select_related('author').get(pk=post_id)
-    if request.method == 'GET':
-        is_edit = True
-        #if post.author_id == User.objects.get(username=request.user).pk: первый варинт проверки на проверку что редактирует автор, далее проверю какой вариант меньше грузит базу
+    if Post.objects.filter(pk=post_id).exists():
+        post = Post.objects.select_related('author').get(pk=post_id)
+        if request.method == 'GET':
+            is_edit = True
+            if post.author == request.user:
+                # вставить в форму пост для редактирования
+                form = PostForm(
+                    instance=post,
+                    files=request.FILES or None
+                ) 
+                return render(request, 'posts/create_post.html', {'form': form, 'is_edit': is_edit, 'post_id': post_id})
+            return redirect('/auth/login/')
+        # instance переопределяет параметры которые не вошли в пост запрос, в коде ниже второй вариант передачи параметров
+        form = PostForm(
+            request.POST,
+            instance=post,
+            files=request.FILES or None
+        )
+        if form.is_valid():
+            complite = form.save(commit=False)
+            #complite.author = request.user 
+            #complite.pk = post.pk
+            #complite.pub_date = post.pub_date
+            complite.save()
+            return redirect('posts:profile', username=request.user)
+        return render(request,'posts/create_post.html', {'form': form, 'is_edit': is_edit, 'post_id': post_id}, ) #пользователь переделывает форму, она не валид
+    return Http404()
+
+
+def delite_post(request, post_id): 
+    try:
+        post = Post.objects.select_related('author').get(pk=post_id)
         if post.author == request.user:
-            form = PostForm(instance=post) # вставить в форму пост для редактирования
-            return render(request, 'posts/create_post.html', {'form':form, 'is_edit':is_edit, 'post_id':post_id})
-        return redirect('/auth/login/')
-    form = PostForm(request.POST, instance = post) # instance переопределяет параметры которые не вошли в пост запрос, в коде ниже второй вариант передачи параметров
+            post.delete()
+    finally:
+        return redirect('posts:home_page')
+
+
+@login_required
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, pk=post_id)
+    form = CommentForm(request.POST or None)
     if form.is_valid():
-        complite = form.save(commit=False)
-        #complite.author = request.user
-        #complite.pk = post.pk
-        #complite.pub_date = post.pub_date
-        #complite.save()
-        print('gfgfgfgfgfg')
-        return redirect('/profile/'+str(request.user))
-    return render(request,'posts/create_post.html', {'form':form, 'is_edit':is_edit, 'post_id':post_id}, ) #пользователь переделывает форму, она не валид
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+    return redirect('posts:post_detail', post_id=post_id)
+
+
+def follow_index(request):
+    try:
+        authors = Follow.objects.filter(user=request.user)
+        #  создадим пустой qweryset
+        posts = Post.objects.none()
+        #  в цикле объеденим его с множествами постов по подписанным авторам   
+        for author in authors:
+            QS = Post.objects.select_related('author').filter(author=author.author)
+            posts = posts.union(QS)
+        paginator = Paginator(posts.order_by('-pub_date'), 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        return render(request, 'posts/follow.html', {'page_obj':page_obj})
+    except:
+        raise Http404()
+
+
+@login_required
+def profile_follow(request, username):
+    try:
+        f = Follow.objects.create(user=request.user, author=User.objects.get(username=username))
+        f.save()
+        return redirect('posts:profile', username=username)
+    except:
+        raise Http404()
+
+@login_required
+def profile_unfollow(request, username):
+    try:
+        f = Follow.objects.filter(user=request.user, author=User.objects.get(username=username))
+        f.delete()
+        return redirect('posts:profile', username=username)
+    except:
+        raise Http404()
