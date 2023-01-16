@@ -42,7 +42,7 @@
     {% if not foorloop.last %}<hr>{% endif %}
     {% endfor %}
     <!-- под последним постом нет линии -->
+    {% endcache %}
     {% include 'includes/paginator.html' %}
   </div>
-{% endcache %}
 {% endblock %}

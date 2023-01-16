@@ -191,8 +191,8 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     try:
-        f = Follow.objects.create(user=request.user, author=User.objects.get(username=username))
-        f.save()
+        follow_obj = Follow.objects.create(user=request.user, author=User.objects.get(username=username))
+        follow_obj.save()
         return redirect('posts:profile', username=username)
     except:
         raise Http404()
@@ -200,8 +200,8 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     try:
-        f = Follow.objects.filter(user=request.user, author=User.objects.get(username=username))
-        f.delete()
+        follow_obj = Follow.objects.filter(user=request.user, author=User.objects.get(username=username))
+        follow_obj.delete()
         return redirect('posts:profile', username=username)
     except:
         raise Http404()
